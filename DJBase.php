@@ -14,21 +14,22 @@ class DJBase {
     const     INFO = 1;
     const    DEBUG = 0;
 
-    private static $log_level = self::DEBUG;
+    protected static $log_level = self::DEBUG;
 
-    private static $db = null;
+    protected static $db = null;
 
-    private static $dsn = "";
-    private static $options = array(
-      "mysql_user" => null,
-      "mysql_pass" => null,
+    protected static $dsn = "";
+    protected static $options = array(
+        "mysql_user"  => null,
+        "mysql_pass"  => null,
+        "mysql_table" => "jobs"
     );
 
     // use either `configure` or `setConnection`, depending on if
     // you already have a PDO object you can re-use
     public static function configure($dsn, $options = array()) {
         self::$dsn = $dsn;
-        self::$options = array_merge(self::$options, $options);
+        self::$options = $options + self::$options;
     }
 
     public static function setLogLevel($const) {

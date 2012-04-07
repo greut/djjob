@@ -5,10 +5,13 @@ namespace djjob;
 use Exception;
 
 class DJJob extends DJBase {
+    protected $worker_name;
+    protected $job_id;
+    protected $max_attempts;
 
     public function __construct($worker_name, $job_id, $options = array()) {
         $options = array_merge(array(
-            "max_attempts" => 5
+            "max_attempts" => 5,
         ), $options);
         $this->worker_name = $worker_name;
         $this->job_id = $job_id;
@@ -58,11 +61,17 @@ class DJJob extends DJBase {
     public function acquireLock() {
         $this->log("[JOB] attempting to acquire lock for job::{$this->job_id} on {$this->worker_name}", self::INFO);
 
-        $lock = $this->runUpdate("
-            UPDATE jobs
-            SET    locked_at = NOW(), locked_by = ?
-            WHERE  id = ? AND (locked_at IS NULL OR locked_by = ?) AND failed_at IS NULL
-        ", array($this->worker_name, $this->job_id, $this->worker_name));
+        $table = self::$options["mysql_table"];
+        $lock = $this->runUpdate(
+            "UPDATE `{$table}`
+             SET    locked_at = NOW(), locked_by = ?
+             WHERE  id = ? AND (locked_at IS NULL OR locked_by = ?) AND failed_at IS NULL",
+            array(
+                $this->worker_name,
+                $this->job_id,
+                $this->worker_name
+            )
+        );
 
         if (!$lock) {
             $this->log("[JOB] failed to acquire lock for job::{$this->job_id}", self::INFO);
@@ -73,29 +82,32 @@ class DJJob extends DJBase {
     }
 
     public function releaseLock() {
-        $this->runUpdate("
-            UPDATE jobs
-            SET locked_at = NULL, locked_by = NULL
-            WHERE id = ?",
+        $table = self::$options["mysql_table"];
+        $this->runUpdate(
+            "UPDATE `{$table}`
+             SET locked_at = NULL, locked_by = NULL
+             WHERE id = ?",
             array($this->job_id)
         );
     }
 
     public function finish() {
+        $table = self::$options["mysql_table"];
         $this->runUpdate(
-            "DELETE FROM jobs WHERE id = ?",
+            "DELETE FROM `{$table}` WHERE id = ?",
             array($this->job_id)
         );
         $this->log("[JOB] completed job::{$this->job_id}", self::INFO);
     }
 
     public function finishWithError($error) {
-        $this->runUpdate("
-            UPDATE jobs
-            SET attempts = attempts + 1,
-                failed_at = IF(attempts >= ?, NOW(), NULL),
-                error = IF(attempts >= ?, ?, NULL)
-            WHERE id = ?",
+        $table = self::$options["mysql_table"];
+        $this->runUpdate(
+            "UPDATE `{$table}`
+             SET attempts = attempts + 1,
+                 failed_at = IF(attempts >= ?, NOW(), NULL),
+                 error = IF(attempts >= ?, ?, NULL)
+             WHERE id = ?",
             array(
                 $this->max_attempts,
                 $this->max_attempts,
@@ -108,22 +120,24 @@ class DJJob extends DJBase {
     }
 
     public function retryLater($delay) {
-        $this->runUpdate("
-            UPDATE jobs
-            SET run_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
-                attempts = attempts + 1
-            WHERE id = ?",
+        $table = self::$options["mysql_table"];
+        $this->runUpdate(
+            "UPDATE `{$table}`
+             SET run_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
+                 attempts = attempts + 1
+             WHERE id = ?",
             array(
-              $delay,
-              $this->job_id
+                $delay,
+                $this->job_id
             )
         );
         $this->releaseLock();
     }
 
     public function getHandler() {
+        $table = self::$options["mysql_table"];
         $rs = $this->runQuery(
-            "SELECT handler FROM jobs WHERE id = ?",
+            "SELECT handler FROM `{$table}` WHERE id = ?",
             array($this->job_id)
         );
         foreach ($rs as $r) return unserialize($r["handler"]);
@@ -131,8 +145,9 @@ class DJJob extends DJBase {
     }
 
     public function getAttempts() {
+        $table = self::$options["mysql_table"];
         $rs = $this->runQuery(
-            "SELECT attempts FROM jobs WHERE id = ?",
+            "SELECT attempts FROM `{$table}` WHERE id = ?",
             array($this->job_id)
         );
         foreach ($rs as $r) return $r["attempts"];
@@ -140,9 +155,15 @@ class DJJob extends DJBase {
     }
 
     public static function enqueue($handler, $queue = "default", $run_at = null) {
+        $table = self::$options["mysql_table"];
         $affected = self::runUpdate(
-            "INSERT INTO jobs (handler, queue, run_at, created_at) VALUES(?, ?, ?, NOW())",
-            array(serialize($handler), (string) $queue, $run_at)
+            "INSERT INTO `{$table}` (handler, queue, run_at, created_at)
+             VALUES(?, ?, ?, NOW())",
+            array(
+                serialize($handler),
+                (string) $queue,
+                $run_at
+            )
         );
 
         if ($affected < 1) {
@@ -154,7 +175,8 @@ class DJJob extends DJBase {
     }
 
     public static function bulkEnqueue($handlers, $queue = "default", $run_at = null) {
-        $sql = "INSERT INTO jobs (handler, queue, run_at, created_at) VALUES";
+        $table = self::$options["mysql_table"];
+        $sql = "INSERT INTO `{$table}` (handler, queue, run_at, created_at) VALUES";
         $sql .= implode(",", array_fill(0, count($handlers), "(?, ?, ?, NOW())"));
 
         $parameters = array();
@@ -177,11 +199,13 @@ class DJJob extends DJBase {
     }
 
     public static function status($queue = "default") {
-        $rs = self::runQuery("
-            SELECT COUNT(*) as total, COUNT(failed_at) as failed, COUNT(locked_at) as locked
-            FROM `jobs`
-            WHERE queue = ?
-        ", array($queue));
+        $table = self::$options["mysql_table"];
+        $rs = self::runQuery(
+            "SELECT COUNT(*) as total, COUNT(failed_at) as failed, COUNT(locked_at) as locked
+             FROM `{$table}`
+             WHERE queue = ?",
+            array($queue)
+        );
         $rs = $rs[0];
 
         $failed = $rs["failed"];

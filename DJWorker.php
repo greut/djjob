@@ -40,8 +40,9 @@ class DJWorker extends DJBase {
     }
 
     public function releaseLocks() {
+        $table = self::$options["mysql_table"];
         $this->runUpdate("
-            UPDATE jobs
+            UPDATE `{$table}`
             SET locked_at = NULL, locked_by = NULL
             WHERE locked_by = ?",
             array($this->name)
@@ -57,9 +58,10 @@ class DJWorker extends DJBase {
      */
     public function getNewJob() {
         # we can grab a locked job if we own the lock
+        $table = self::$options["mysql_table"];
         $rs = $this->runQuery("
             SELECT id
-            FROM   jobs
+            FROM   `{$table}`
             WHERE  queue = ?
             AND    (run_at IS NULL OR NOW() >= run_at)
             AND    (locked_at IS NULL OR locked_by = ?)

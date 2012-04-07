@@ -22,8 +22,8 @@ use djjob\DJJob,
     djjob\DJWorker;
 
 DJJob::configure("mysql:host=127.0.0.1;dbname=test", array(
-  "mysql_user" => "test",
-  "mysql_pass" => "test",
+  "mysql_user"  => "test",
+  "mysql_pass"  => "test"
 ));
 
 DJJob::runQuery("
@@ -68,7 +68,11 @@ DJJob::bulkEnqueue(array(
 ));
 DJJob::enqueue(new FailingJob());
 
-$worker = new DJWorker(array("count" => 5, "max_attempts" => 2, "sleep" => 10));
+$worker = new DJWorker(array(
+	"count" => 5,
+	"max_attempts" => 2,
+	"sleep" => 10
+));
 $worker->start();
 
 var_dump(DJJob::status());

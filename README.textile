@@ -6,7 +6,7 @@ p. Like delayed_job, DJJob uses a @jobs@ table for persisting and tracking pendi
 
 h2. Requirements
 
-* PHP5
+* PHP >= 5.3 
 * PDO (Ships with PHP >= 5.1)
 * (Optional) PCNTL library
 
@@ -35,6 +35,7 @@ bc. DJJob::configure("mysql:host=127.0.0.1;dbname=djjob_test;port=3306", array('
 
 p. If you're using mysql, you'll need to pass the database credentials separately. Otherwise, you can provide those in the connection string, see "http://stackoverflow.com/questions/237367/why-is-php-pdo-dsn-a-different-format-for-mysql-versus-postgresql":http://stackoverflow.com/questions/237367/why-is-php-pdo-dsn-a-different-format-for-mysql-versus-postgresql for an explanation.
 
+p. DJJob follow the "PSR-0 standard":https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-0.md, so you can add it to your autoloader.
 
 h2. Usage
 
@@ -119,3 +120,4 @@ h3. Changes
 
 * Change DJJob::configure to take an options array
 * Eliminated Propel dependency by switching to PDO
+* Switch to use proper namespaces.

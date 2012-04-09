@@ -8,6 +8,7 @@ h2. Requirements
 
 * PHP >= 5.3 
 * PDO (Ships with PHP >= 5.1)
+* igbinary
 * (Optional) PCNTL library
 
 h2. Setup
@@ -18,7 +19,7 @@ p. The @jobs@ table structure looks like:
 
 bc. CREATE TABLE `jobs` (
 `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-`handler` TEXT NOT NULL,
+`handler` BLOB NOT NULL,
 `queue` VARCHAR(255) NOT NULL DEFAULT 'default',
 `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
 `run_at` DATETIME NULL,
@@ -121,3 +122,4 @@ h3. Changes
 * Change DJJob::configure to take an options array
 * Eliminated Propel dependency by switching to PDO
 * Switch to use proper namespaces.
+* Using igbinary for serialization.

@@ -140,7 +140,7 @@ class DJJob extends DJBase {
             "SELECT handler FROM `{$table}` WHERE id = ?",
             array($this->job_id)
         );
-        foreach ($rs as $r) return unserialize($r["handler"]);
+        foreach ($rs as $r) return igbinary_unserialize($r["handler"]);
         return false;
     }
 
@@ -160,7 +160,7 @@ class DJJob extends DJBase {
             "INSERT INTO `{$table}` (handler, queue, run_at, created_at)
              VALUES(?, ?, ?, NOW())",
             array(
-                serialize($handler),
+                igbinary_serialize($handler),
                 (string) $queue,
                 $run_at
             )
@@ -175,13 +175,16 @@ class DJJob extends DJBase {
     }
 
     public static function bulkEnqueue($handlers, $queue = "default", $run_at = null) {
+        if (empty($handlers)) {
+            return true;
+        }
         $table = self::$options["mysql_table"];
         $sql = "INSERT INTO `{$table}` (handler, queue, run_at, created_at) VALUES";
         $sql .= implode(",", array_fill(0, count($handlers), "(?, ?, ?, NOW())"));
 
         $parameters = array();
         foreach ($handlers as $handler) {
-            $parameters []= serialize($handler);
+            $parameters []= igbinary_serialize($handler);
             $parameters []= (string) $queue;
             $parameters []= $run_at;
         }
